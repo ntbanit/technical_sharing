@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Database Join Algorithms — Visual Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c14;
+  --surface: #0e1520;
+  --surface2: #131d2e;
+  --border: #1c2d44;
+  --border2: #253548;
+
+  --nl:    #f59e0b;
+  --nl-dim:#3d2a08;
+  --mj:    #38bdf8;
+  --mj-dim:#0c2d3f;
+  --hj:    #fb7185;
+  --hj-dim:#3d0f1a;
+  --match: #4ade80;
+  --match-dim: #14301c;
+  --text:  #dde6f0;
+  --muted: #4a6080;
+  --hi:    #e2e8f0;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  padding: 26px 48px 22px;
+  background: linear-gradient(120deg, #080c14 0%, #0d1628 60%, #0f0d25 100%);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-end; gap: 18px;
+}
+header h1 {
+  font-size: 2rem; font-weight: 800;
+  background: linear-gradient(90deg, #e2e8f0 20%, #fb7185 80%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  letter-spacing: -0.5px;
+}
+header p { color: var(--muted); font-size: 0.82rem; padding-bottom:3px; font-weight:400; }
+
+/* ── TABS ── */
+nav {
+  display: flex; gap: 0;
+  padding: 0 48px;
+  background: #090d17;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+nav button {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.8rem; font-weight: 600;
+  padding: 13px 22px;
+  background: transparent;
+  border: none; border-bottom: 2.5px solid transparent;
+  color: var(--muted);
+  cursor: pointer; white-space: nowrap;
+  transition: color .2s, border-color .2s;
+  letter-spacing: 0.4px;
+}
+nav button:hover { color: var(--hi); }
+nav button.active { color: var(--hi); border-bottom-color: #e2e8f0; }
+nav button .dot {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; margin-right: 7px; vertical-align: middle;
+}
+
+/* ── MAIN ── */
+main { padding: 34px 48px; max-width: 1280px; margin: 0 auto; }
+
+.scene { display: none; animation: fadeUp .3s ease; }
+.scene.active { display: block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+.scene-head { margin-bottom: 24px; }
+.scene-head h2 { font-size: 1.55rem; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.3px; }
+.scene-head p  { color: #6b8aaa; font-size: 0.88rem; line-height: 1.65; max-width: 700px; font-weight: 400; }
+
+/* ── CONTROLS ── */
+.ctrl {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 20px; flex-wrap: wrap;
+}
+.btn {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.76rem; font-weight: 600;
+  padding: 8px 16px; border-radius: 6px;
+  border: 1px solid var(--border2);
+  cursor: pointer; transition: all .15s;
+  background: var(--surface); color: var(--text);
+  letter-spacing: 0.3px;
+}
+.btn:hover { background: #1a2840; border-color: #334d6e; }
+.btn-play { background: #0f1e38; border-color: #1d4068; color: #93c5fd; }
+.btn-play:hover { background: #152845; }
+.step-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.74rem;
+  padding: 6px 12px; border-radius: 4px;
+  background: #150f03; border: 1px solid #6b4a10;
+  color: #fbbf24;
+}
+
+/* ── LAYOUT ── */
+.cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+.cols3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }
+.col-span2 { grid-column: 1 / -1; }
+
+/* ── PANEL ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 22px;
+}
+.panel-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 14px;
+}
+
+/* ── TABLE ROW DISPLAY ── */
+.row-list { display: flex; flex-direction: column; gap: 5px; }
+
+.row-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  border: 1px solid transparent;
+  transition: all .25s;
+}
+.row-idle    { background: #0e1825; color: #445566; border-color: var(--border); }
+.row-active  { background: #2a1f08; color: #fcd34d; border-color: #d97706; }
+.row-scanned { background: #0f1e30; color: #60a5fa; border-color: #1d4068; }
+.row-match   { background: var(--match-dim); color: var(--match); border-color: #16a34a; }
+.row-sorted  { background: #0c2030; color: #7dd3fc; border-color: #0369a1; }
+.row-ptr     { background: #1a0f30; color: #c4b5fd; border-color: #6d28d9; }
+.row-hashed  { background: #1a0e18; color: #f9a8d4; border-color: #9d174d; }
+.row-probe   { background: #1a1008; color: #fdba74; border-color: #c2410c; }
+
+.row-key {
+  display: inline-block; padding: 1px 6px;
+  border-radius: 3px; background: rgba(255,255,255,.06);
+  margin-right: 4px;
+}
+
+/* ── MATCH OUTPUT ── */
+.match-output {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 220px; overflow-y: auto;
+}
+.match-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px; border-radius: 4px;
+  background: var(--match-dim); border: 1px solid #166534;
+  font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem;
+  color: var(--match);
+  animation: popIn .2s ease;
+}
+@keyframes popIn { from { opacity:0; transform:scale(.95); } to { opacity:1; transform:scale(1); } }
+
+/* ── HASH BUCKETS ── */
+.bucket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bucket {
+  border-radius: 6px; border: 1px solid var(--border2);
+  background: var(--surface2); padding: 8px 10px;
+  transition: border-color .25s;
+}
+.bucket.active-bucket { border-color: var(--hj); }
+.bucket-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.64rem; color: var(--muted);
+  margin-bottom: 5px; letter-spacing: 0.6px;
+}
+.bucket-entries { display: flex; flex-direction: column; gap: 3px; }
+.bucket-entry {
+  padding: 3px 7px; border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
+  transition: all .2s;
+}
+.be-idle   { background: #1a2030; color: #445566; }
+.be-filled { background: #1a0e18; color: #f9a8d4; border: 1px solid #9d174d; }
+.be-hit    { background: #14301c; color: #4ade80; border: 1px solid #16a34a; }
+
+/* ── POINTER ARROW ── */
+.ptr-arrow {
+  font-size: 1.2rem; color: var(--muted);
+  text-align: center; margin: 4px 0;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ── INFO CARDS ── */
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.stat-box {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px;
+}
+.stat-lbl { font-size: 0.64rem; color: var(--muted); margin-bottom: 3px; }
+.stat-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.05rem; font-weight: 600;
+}
+
+.pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pros, .cons {
+  border-radius: 6px; padding: 11px 13px;
+  font-size: 0.76rem; line-height: 1.7; font-weight: 400;
+}
+.pros { background: #0b1f12; border: 1px solid #14532d; color: #86efac; }
+.cons { background: #200d0d; border: 1px solid #7f1d1d; color: #fca5a5; }
+.pros b, .cons b {
+  display: block; font-size: 0.65rem; letter-spacing: 0.9px;
+  text-transform: uppercase; margin-bottom: 5px; opacity: 0.8;
+}
+.pros li, .cons li { list-style: none; }
+.pros li::before { content: '✓  '; }
+.cons li::before { content: '✗  '; }
+
+/* ── COMPLEXITY BADGE ── */
+.cmplx {
+  display: inline-block; padding: 3px 9px;
+  border-radius: 4px; font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+}
+.cmplx-g { background: #0b1f12; color: #4ade80; border: 1px solid #166534; }
+.cmplx-m { background: #16100a; color: #fcd34d; border: 1px solid #92400e; }
+.cmplx-b { background: #200d0d; color: #fca5a5; border: 1px solid #7f1d1d; }
+
+/* ── PHASE STEPS ── */
+.phases { display: flex; flex-direction: column; gap: 9px; }
+.phase {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px 12px;
+}
+.pnum {
+  flex-shrink: 0; width: 22px; height: 22px;
+  border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 0.68rem; font-weight: 700;
+}
+.phase p { font-size: 0.78rem; color: #7a94b0; line-height: 1.55; font-weight: 400; }
+.phase strong { color: var(--hi); font-size: 0.8rem; }
+
+/* ── COMPARISON TABLE ── */
+.cmp-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.cmp-table th, .cmp-table td {
+  padding: 11px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.cmp-table th {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem; text-transform: uppercase;
+  letter-spacing: 0.9px; color: var(--muted);
+  background: #090d17;
+}
+.cmp-table tbody tr:hover td { background: #0e1825; }
+.cmp-table td:first-child { font-weight: 700; font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; }
+
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-size: 0.68rem; font-family: 'IBM Plex Mono', monospace;
+}
+.bg { background:#0b1f12;color:#4ade80;border:1px solid #166534; }
+.bb { background:#200d0d;color:#fca5a5;border:1px solid #7f1d1d; }
+.bm { background:#16100a;color:#fcd34d;border:1px solid #92400e; }
+
+/* ── LEGEND ── */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 16px; margin-bottom: 18px;
+}
+.li { display: flex; align-items: center; gap: 7px; font-size: 0.74rem; color: var(--muted); font-weight: 400; }
+.ld { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── MERGE JOIN POINTER ── */
+.mj-ptr-row {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
+  color: var(--muted); margin-bottom: 8px;
+}
+.mj-ptr-badge {
+  padding: 2px 8px; border-radius: 3px;
+  border: 1px solid #6d28d9; background: #1a0f30; color: #c4b5fd;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #253548; border-radius: 4px; }
+
+@media (max-width: 720px) {
+  main { padding: 20px 16px; }
+  header { padding: 18px 16px 14px; }
+  nav { padding: 0 16px; }
+  .cols2, .cols3, .info-grid, .pros-cons { grid-template-columns: 1fr; }
+  .col-span2 { grid-column: auto; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Join Algorithms</h1>
+    <p>Visual explainer · Nested Loop · Merge Join · Hash Join</p>
+  </div>
+</header>
+
+<nav>
+  <button class="active" id="tab-nl" onclick="show('nl')">
+    <span class="dot" style="background:var(--nl)"></span>Nested Loop Join
+  </button>
+  <button id="tab-mj" onclick="show('mj')">
+    <span class="dot" style="background:var(--mj)"></span>Merge Join
+  </button>
+  <button id="tab-hj" onclick="show('hj')">
+    <span class="dot" style="background:var(--hj)"></span>Hash Join
+  </button>
+  <button id="tab-cmp" onclick="show('cmp')">
+    <span class="dot" style="background:var(--muted)"></span>Comparison
+  </button>
+</nav>
+
+<main>
+
+<!-- ══════════════════ NESTED LOOP ══════════════════ -->
+<div class="scene active" id="scene-nl">
+  <div class="scene-head">
+    <h2 style="color:var(--nl)">Nested Loop Join</h2>
+    <p>For every row in the <strong>outer table</strong>, scan (or probe) the <strong>inner table</strong> to find matching rows. Simple but can be expensive — O(N × M) comparisons in the worst case.</p>
+  </div>
+
+  <div class="legend">
+    <div class="li"><div class="ld" style="background:#2a1f08;border:1px solid #d97706"></div>Outer row (current)</div>
+    <div class="li"><div class="ld" style="background:#0f1e30;border:1px solid #1d4068"></div>Inner row (being compared)</div>
+    <div class="li"><div class="ld" style="background:var(--match-dim);border:1px solid #166534"></div>Match found</div>
+    <div class="li"><div class="ld" style="background:#0e1825;border:1px solid var(--border)"></div>Idle / not yet visited</div>
+  </div>
+
+  <div class="ctrl">
+    <button class="btn btn-play" onclick="playNL()">▶ Animate</button>
+    <button class="btn" onclick="resetNL()">↺ Reset</button>
+    <span class="step-badge" id="nl-label">Click Animate to start</span>
+  </div>
+
+  <div class="cols2">
+    <!-- OUTER -->
+    <div class="panel">
+      <div class="panel-title">Outer Table — Customers (4 rows)</div>
+      <div class="row-list" id="nl-outer"></div>
+    </div>
+
+    <!-- INNER -->
+    <div class="panel">
+      <div class="panel-title">Inner Table — Orders (6 rows)</div>
+      <div class="row-list" id="nl-inner"></div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="panel col-span2">
+      <div class="panel-title">Matched Output &nbsp;<span id="nl-count" style="color:var(--match);font-family:'IBM Plex Mono',monospace">0 rows</span></div>
+      <div class="match-output" id="nl-out"></div>
+    </div>
+
+    <!-- INFO -->
+    <div class="panel col-span2">
+      <div class="panel-title">Characteristics</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+        <div class="stat-box">
+          <div class="stat-lbl">Time Complexity</div>
+          <div class="stat-val"><span class="cmplx cmplx-b">O(N × M)</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Memory</div>
+          <div class="stat-val"><span class="cmplx cmplx-g">O(1)</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Comparisons</div>
+          <div class="stat-val" style="color:var(--nl)" id="nl-comps">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Requires Sort</div>
+          <div class="stat-val" style="color:#ef4444;font-size:0.85rem">No</div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros">
+          <b>When Fast</b>
+          <ul>
+            <li>Inner table fits in memory / cache</li>
+            <li>Inner table has an index on join key</li>
+            <li>Outer table is very small</li>
+            <li>No pre-sorting needed</li>
+            <li>Any join predicate (even inequalities)</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <b>When Slow</b>
+          <ul>
+            <li>Large outer × large inner → N·M scans</li>
+            <li>No index on inner join key</li>
+            <li>Data does not fit in buffer pool</li>
+            <li>High-concurrency workloads</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MERGE JOIN ══════════════════ -->
+<div class="scene" id="scene-mj">
+  <div class="scene-head">
+    <h2 style="color:var(--mj)">Merge Join (Sort-Merge Join)</h2>
+    <p>Both tables are <strong>sorted on the join key</strong>, then two pointers advance in tandem — emitting matches as they go. Each row is read <em>at most once</em>. O(N + M) after sorting.</p>
+  </div>
+
+  <div class="legend">
+    <div class="li"><div class="ld" style="background:#1a0f30;border:1px solid #6d28d9"></div>Pointer position</div>
+    <div class="li"><div class="ld" style="background:#0c2030;border:1px solid #0369a1"></div>Sorted / already processed</div>
+    <div class="li"><div class="ld" style="background:#2a1f08;border:1px solid #d97706"></div>Current comparison</div>
+    <div class="li"><div class="ld" style="background:var(--match-dim);border:1px solid #166534"></div>Match emitted</div>
+  </div>
+
+  <div class="ctrl">
+    <button class="btn btn-play" onclick="playMJ()">▶ Animate</button>
+    <button class="btn" onclick="resetMJ()">↺ Reset</button>
+    <span class="step-badge" id="mj-label">Click Animate to start</span>
+  </div>
+
+  <div class="cols2">
+    <!-- SORTED LEFT -->
+    <div class="panel">
+      <div class="panel-title">Left Table — sorted by customer_id</div>
+      <div class="mj-ptr-row">Pointer L: <span class="mj-ptr-badge" id="mj-lptr">→ row 0</span></div>
+      <div class="row-list" id="mj-left"></div>
+    </div>
+
+    <!-- SORTED RIGHT -->
+    <div class="panel">
+      <div class="panel-title">Right Table — sorted by customer_id</div>
+      <div class="mj-ptr-row">Pointer R: <span class="mj-ptr-badge" id="mj-rptr">→ row 0</span></div>
+      <div class="row-list" id="mj-right"></div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="panel col-span2">
+      <div class="panel-title">Matched Output &nbsp;<span id="mj-count" style="color:var(--match);font-family:'IBM Plex Mono',monospace">0 rows</span></div>
+      <div class="match-output" id="mj-out"></div>
+    </div>
+
+    <!-- INFO -->
+    <div class="panel col-span2">
+      <div class="panel-title">Characteristics</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+        <div class="stat-box">
+          <div class="stat-lbl">Time (after sort)</div>
+          <div class="stat-val"><span class="cmplx cmplx-g">O(N + M)</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Sort Cost</div>
+          <div class="stat-val"><span class="cmplx cmplx-m">O(N log N)</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Memory</div>
+          <div class="stat-val"><span class="cmplx cmplx-m">O(N+M) sort</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Requires Sort</div>
+          <div class="stat-val" style="color:#fbbf24;font-size:0.85rem">Yes (or index)</div>
+        </div>
+      </div>
+      <div class="phases" style="margin-bottom:14px">
+        <div class="phase">
+          <div class="pnum" style="background:#0c2030;color:var(--mj)">1</div>
+          <div><strong>Sort Phase</strong>
+          <p>Both inputs are sorted on the join key (or an index is used). This is the dominant cost when data is large and unsorted.</p></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:#14301c;color:var(--match)">2</div>
+          <div><strong>Merge Phase</strong>
+          <p>Two read-heads advance simultaneously. If L &lt; R, advance L. If R &lt; L, advance R. If equal, emit all combinations and handle duplicates.</p></div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros">
+          <b>When Fast</b>
+          <ul>
+            <li>Data already sorted (or index exists)</li>
+            <li>Large equi-joins with sorted inputs</li>
+            <li>Output must be sorted anyway</li>
+            <li>Good cache locality after sort</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <b>When Slow</b>
+          <ul>
+            <li>Unsorted input → expensive sort step</li>
+            <li>Only works for equi-joins</li>
+            <li>Many duplicate keys → backtracking</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ HASH JOIN ══════════════════ -->
+<div class="scene" id="scene-hj">
+  <div class="scene-head">
+    <h2 style="color:var(--hj)">Hash Join</h2>
+    <p><strong>Build phase:</strong> hash the smaller table into an in-memory hash table. <strong>Probe phase:</strong> stream the larger table and look up each row's key in the hash table. O(N + M) with O(smaller table) memory.</p>
+  </div>
+
+  <div class="legend">
+    <div class="li"><div class="ld" style="background:#1a0e18;border:1px solid #9d174d"></div>Build row (hashed)</div>
+    <div class="li"><div class="ld" style="background:#1a1008;border:1px solid #c2410c"></div>Probe row (streaming)</div>
+    <div class="li"><div class="ld" style="background:var(--match-dim);border:1px solid #166534"></div>Match found in hash table</div>
+  </div>
+
+  <div class="ctrl">
+    <button class="btn btn-play" onclick="playHJ()">▶ Animate</button>
+    <button class="btn" onclick="resetHJ()">↺ Reset</button>
+    <span class="step-badge" id="hj-label">Click Animate to start</span>
+  </div>
+
+  <div class="cols3">
+    <!-- BUILD TABLE -->
+    <div class="panel">
+      <div class="panel-title">Build Table — Customers (smaller)</div>
+      <div class="row-list" id="hj-build"></div>
+    </div>
+
+    <!-- HASH TABLE -->
+    <div class="panel">
+      <div class="panel-title">In-Memory Hash Table — h(customer_id)</div>
+      <div class="bucket-grid" id="hj-buckets"></div>
+    </div>
+
+    <!-- PROBE TABLE -->
+    <div class="panel">
+      <div class="panel-title">Probe Table — Orders (larger)</div>
+      <div class="row-list" id="hj-probe"></div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="panel col-span2" style="grid-column:1/3">
+      <div class="panel-title">Matched Output &nbsp;<span id="hj-count" style="color:var(--match);font-family:'IBM Plex Mono',monospace">0 rows</span></div>
+      <div class="match-output" id="hj-out"></div>
+    </div>
+
+    <!-- INFO -->
+    <div class="panel" style="grid-column:3/4;grid-row:2/3">
+      <div class="panel-title">Comparisons</div>
+      <div class="stat-box" style="margin-bottom:8px">
+        <div class="stat-lbl">Hash Lookups (O(1) avg)</div>
+        <div class="stat-val" style="color:var(--hj)" id="hj-lookups">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Build rows hashed</div>
+        <div class="stat-val" style="color:#f9a8d4" id="hj-built">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:18px"></div>
+
+  <div class="cols2">
+    <div class="panel">
+      <div class="panel-title">Characteristics</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div class="stat-box">
+          <div class="stat-lbl">Time Complexity</div>
+          <div class="stat-val"><span class="cmplx cmplx-g">O(N + M)</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Memory</div>
+          <div class="stat-val"><span class="cmplx cmplx-m">O(smaller table)</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Requires Sort</div>
+          <div class="stat-val" style="color:#4ade80;font-size:0.85rem">No</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-lbl">Grace Hash</div>
+          <div class="stat-val" style="color:#fbbf24;font-size:0.8rem">If spills to disk</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Phases</div>
+      <div class="phases">
+        <div class="phase">
+          <div class="pnum" style="background:#1a0e18;color:var(--hj)">1</div>
+          <div><strong>Build Phase</strong>
+          <p>Scan the smaller relation. Hash each row's join key into a bucket in the in-memory hash table.</p></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:#1a1008;color:#fdba74">2</div>
+          <div><strong>Probe Phase</strong>
+          <p>Stream the larger relation. For each row, compute h(key) and look up the bucket — O(1) average lookup.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel col-span2">
+      <div class="pros-cons">
+        <div class="pros">
+          <b>When Fast</b>
+          <ul>
+            <li>Large unsorted equi-joins</li>
+            <li>Smaller table fits in memory</li>
+            <li>No index available</li>
+            <li>Parallel / vectorised execution</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <b>When Slow</b>
+          <ul>
+            <li>Hash table spills to disk (Grace Hash Join)</li>
+            <li>High cardinality skew → bucket overflow</li>
+            <li>Only equi-joins supported</li>
+            <li>High memory pressure</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ COMPARISON ══════════════════ -->
+<div class="scene" id="scene-cmp">
+  <div class="scene-head">
+    <h2>Join Algorithm Comparison</h2>
+    <p>How the query planner decides which join to use — driven by table size, memory, indexes, and selectivity.</p>
+  </div>
+
+  <div class="panel" style="margin-bottom:22px">
+    <div class="panel-title">Decision Matrix</div>
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th>Algorithm</th>
+          <th>Time (best)</th>
+          <th>Memory</th>
+          <th>Requires Sort?</th>
+          <th>Index Benefit</th>
+          <th>Non-equi joins?</th>
+          <th>Parallel?</th>
+          <th>Best For</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:var(--nl)">Nested Loop</td>
+          <td><span class="cmplx cmplx-b">O(N × M)</span></td>
+          <td><span class="badge bg">O(1)</span></td>
+          <td><span class="badge bg">No</span></td>
+          <td><span class="badge bg">Yes — huge</span></td>
+          <td><span class="badge bg">Yes</span></td>
+          <td><span class="badge bm">Limited</span></td>
+          <td>Small outer + indexed inner</td>
+        </tr>
+        <tr>
+          <td style="color:var(--mj)">Merge Join</td>
+          <td><span class="cmplx cmplx-g">O(N + M)</span></td>
+          <td><span class="badge bm">O(N+M) sort</span></td>
+          <td><span class="badge bb">Yes (or index)</span></td>
+          <td><span class="badge bg">Avoids sort</span></td>
+          <td><span class="badge bb">No (equi only)</span></td>
+          <td><span class="badge bg">Yes</span></td>
+          <td>Pre-sorted / indexed large tables</td>
+        </tr>
+        <tr>
+          <td style="color:var(--hj)">Hash Join</td>
+          <td><span class="cmplx cmplx-g">O(N + M)</span></td>
+          <td><span class="badge bm">O(smaller table)</span></td>
+          <td><span class="badge bg">No</span></td>
+          <td><span class="badge bm">Not needed</span></td>
+          <td><span class="badge bb">No (equi only)</span></td>
+          <td><span class="badge bg">Yes</span></td>
+          <td>Large unsorted equi-joins</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cols3" style="margin-bottom:22px">
+    <div class="panel">
+      <div class="panel-title" style="color:var(--nl)">Nested Loop — Choose When</div>
+      <div class="phases">
+        <div class="phase">
+          <div class="pnum" style="background:var(--nl-dim);color:var(--nl)">✓</div>
+          <div><p>Outer table is <strong>very small</strong> (e.g., 1 row from a primary-key lookup).</p></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:var(--nl-dim);color:var(--nl)">✓</div>
+          <div><p>Inner table has an <strong>index on the join key</strong> — each probe is O(log N).</p></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:var(--nl-dim);color:var(--nl)">✓</div>
+          <div><p>Join predicate uses <strong>inequality</strong> or BETWEEN — hash/merge don't apply.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="color:var(--mj)">Merge Join — Choose When</div>
+      <div class="phases">
+        <div class="phase">
+          <div class="pnum" style="background:var(--mj-dim);color:var(--mj)">✓</div>
+          <div><p>Both inputs are <strong>already sorted</strong> on the join key (e.g., clustered index scan).</p></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:var(--mj-dim);color:var(--mj)">✓</div>
+          <div><p>Query needs <strong>ordered output</strong> — merge join delivers it for free.</p></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:var(--mj-dim);color:var(--mj)">✓</div>
+          <div><p><strong>Low memory</strong> available but tables are large — merge is more cache-friendly than hashing.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="color:var(--hj)">Hash Join — Choose When</div>
+      <div class="phases">
+        <div class="phase">
+          <div class="pnum" style="background:var(--hj-dim);color:var(--hj)">✓</div>
+          <div><p>Both tables are <strong>large and unsorted</strong> — hash avoids the O(N log N) sort cost.</p></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:var(--hj-dim);color:var(--hj)">✓</div>
+          <div><p><strong>No usable index</strong> exists on either join key.</p></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:var(--hj-dim);color:var(--hj)">✓</div>
+          <div><p><strong>Sufficient memory</strong> to hold the build-side hash table (at least the smaller table).</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Visual Complexity — Comparisons Made vs Table Size</div>
+    <div style="position:relative;height:180px;margin-top:10px">
+      <canvas id="cmp-chart" style="width:100%;height:180px"></canvas>
+    </div>
+    <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap">
+      <div class="li"><div class="ld" style="background:var(--nl)"></div> Nested Loop O(N²)</div>
+      <div class="li"><div class="ld" style="background:var(--mj)"></div> Merge / Hash O(N log N + N)</div>
+      <div class="li"><div class="ld" style="background:var(--hj)"></div> Hash O(N) after build</div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function flash(el) {
+  el.style.boxShadow = '0 0 0 2px white';
+  setTimeout(() => el.style.boxShadow = '', 200);
+}
+
+/* ──────────────── DATA ──────────────── */
+const CUSTOMERS = [
+  { id: 1, name: 'Alice' },
+  { id: 2, name: 'Bob' },
+  { id: 3, name: 'Carol' },
+  { id: 4, name: 'Dave' },
+];
+const ORDERS = [
+  { oid: 101, cid: 2, item: 'Book' },
+  { oid: 102, cid: 1, item: 'Pen' },
+  { oid: 103, cid: 3, item: 'Bag' },
+  { oid: 104, cid: 2, item: 'Lamp' },
+  { oid: 105, cid: 5, item: 'Cup' }, // no match
+  { oid: 106, cid: 1, item: 'Mug' },
+];
+
+/* ──────────────── SHARED ──────────────── */
+function rowHtml(cls, label) {
+  const d = document.createElement('div');
+  d.className = 'row-item ' + cls;
+  d.innerHTML = label;
+  return d;
+}
+
+function matchRow(left, right) {
+  const d = document.createElement('div');
+  d.className = 'match-row';
+  d.innerHTML = `<span style="color:#4ade80">✓</span> ${left} ⟷ ${right}`;
+  return d;
+}
+
+/* ──────────────── NESTED LOOP ──────────────── */
+let nlRun = false;
+
+function buildNL() {
+  const outerEl = document.getElementById('nl-outer');
+  const innerEl = document.getElementById('nl-inner');
+  outerEl.innerHTML = '';
+  innerEl.innerHTML = '';
+  document.getElementById('nl-out').innerHTML = '';
+  document.getElementById('nl-count').textContent = '0 rows';
+  document.getElementById('nl-comps').textContent = '0';
+  document.getElementById('nl-label').textContent = 'Click Animate to start';
+
+  CUSTOMERS.forEach((c, i) => {
+    const d = rowHtml('row-idle', `<span class="row-key">cid=${c.id}</span>${c.name}`);
+    d.id = 'nl-o' + i;
+    outerEl.appendChild(d);
+  });
+  ORDERS.forEach((o, i) => {
+    const d = rowHtml('row-idle', `<span class="row-key">cid=${o.cid}</span>Order #${o.oid} · ${o.item}`);
+    d.id = 'nl-i' + i;
+    innerEl.appendChild(d);
+  });
+}
+
+function resetNL() { nlRun = false; buildNL(); }
+
+async function playNL() {
+  if (nlRun) return;
+  nlRun = true;
+  buildNL();
+  let comps = 0, matches = 0;
+
+  for (let i = 0; i < CUSTOMERS.length; i++) {
+    if (!nlRun) return;
+    const outerEl = document.getElementById('nl-o' + i);
+    outerEl.className = 'row-item row-active';
+    document.getElementById('nl-label').textContent = `Outer row ${i}: cid=${CUSTOMERS[i].id} (${CUSTOMERS[i].name}) — scanning inner table…`;
+    await sleep(400);
+
+    for (let j = 0; j < ORDERS.length; j++) {
+      if (!nlRun) return;
+      const innerEl = document.getElementById('nl-i' + j);
+      innerEl.className = 'row-item row-scanned';
+      comps++;
+      document.getElementById('nl-comps').textContent = comps;
+      await sleep(160);
+
+      if (CUSTOMERS[i].id === ORDERS[j].cid) {
+        innerEl.className = 'row-item row-match';
+        matches++;
+        document.getElementById('nl-count').textContent = matches + ' rows';
+        document.getElementById('nl-out').appendChild(
+          matchRow(`cid=${CUSTOMERS[i].id} ${CUSTOMERS[i].name}`, `Order #${ORDERS[j].oid} ${ORDERS[j].item}`)
+        );
+        await sleep(200);
+      } else {
+        await sleep(60);
+        innerEl.className = 'row-item row-idle';
+      }
+    }
+    outerEl.className = 'row-item row-sorted';
+  }
+  document.getElementById('nl-label').textContent = `Done — ${comps} comparisons, ${matches} matches found`;
+  nlRun = false;
+}
+
+/* ──────────────── MERGE JOIN ──────────────── */
+let mjRun = false;
+
+const MJ_LEFT  = [
+  { id:1, name:'Alice' }, { id:2, name:'Bob' },
+  { id:3, name:'Carol' }, { id:4, name:'Dave' },
+];
+const MJ_RIGHT = [
+  { cid:1, oid:102, item:'Pen' }, { cid:1, oid:106, item:'Mug' },
+  { cid:2, oid:101, item:'Book'}, { cid:2, oid:104, item:'Lamp'},
+  { cid:3, oid:103, item:'Bag' }, { cid:5, oid:105, item:'Cup' },
+];
+
+function buildMJ() {
+  ['mj-left','mj-right','mj-out'].forEach(id => document.getElementById(id).innerHTML = '');
+  document.getElementById('mj-count').textContent = '0 rows';
+  document.getElementById('mj-lptr').textContent = '→ row 0';
+  document.getElementById('mj-rptr').textContent = '→ row 0';
+  document.getElementById('mj-label').textContent = 'Click Animate to start';
+
+  MJ_LEFT.forEach((r, i) => {
+    const d = rowHtml('row-sorted', `<span class="row-key">id=${r.id}</span>${r.name}`);
+    d.id = 'mjl' + i; document.getElementById('mj-left').appendChild(d);
+  });
+  MJ_RIGHT.forEach((r, i) => {
+    const d = rowHtml('row-sorted', `<span class="row-key">cid=${r.cid}</span>Order #${r.oid} · ${r.item}`);
+    d.id = 'mjr' + i; document.getElementById('mj-right').appendChild(d);
+  });
+}
+
+function resetMJ() { mjRun = false; buildMJ(); }
+
+async function playMJ() {
+  if (mjRun) return;
+  mjRun = true;
+  buildMJ();
+  let li = 0, ri = 0, matches = 0;
+
+  while (li < MJ_LEFT.length && ri < MJ_RIGHT.length) {
+    if (!mjRun) return;
+
+    // mark pointers
+    document.getElementById('mj-lptr').textContent = `→ row ${li}`;
+    document.getElementById('mj-rptr').textContent = `→ row ${ri}`;
+
+    const lel = document.getElementById('mjl' + li);
+    const rel = document.getElementById('mjr' + ri);
+    lel.className = 'row-item row-ptr';
+    rel.className = 'row-item row-ptr';
+
+    const lv = MJ_LEFT[li].id, rv = MJ_RIGHT[ri].cid;
+    document.getElementById('mj-label').textContent = `Compare L[${li}].id=${lv} vs R[${ri}].cid=${rv}`;
+    await sleep(500);
+
+    if (lv === rv) {
+      lel.className = 'row-item row-match';
+      rel.className = 'row-item row-match';
+      matches++;
+      document.getElementById('mj-count').textContent = matches + ' rows';
+      document.getElementById('mj-out').appendChild(
+        matchRow(`id=${lv} ${MJ_LEFT[li].name}`, `Order #${MJ_RIGHT[ri].oid} · ${MJ_RIGHT[ri].item}`)
+      );
+      document.getElementById('mj-label').textContent = `✓ Match! id=${lv} — check next right row for duplicates`;
+      await sleep(400);
+
+      // peek ahead for more right-side matches with same key
+      let ri2 = ri + 1;
+      while (ri2 < MJ_RIGHT.length && MJ_RIGHT[ri2].cid === lv) {
+        if (!mjRun) return;
+        const rel2 = document.getElementById('mjr' + ri2);
+        rel2.className = 'row-item row-match';
+        matches++;
+        document.getElementById('mj-count').textContent = matches + ' rows';
+        document.getElementById('mj-out').appendChild(
+          matchRow(`id=${lv} ${MJ_LEFT[li].name}`, `Order #${MJ_RIGHT[ri2].oid} · ${MJ_RIGHT[ri2].item}`)
+        );
+        await sleep(300);
+        ri2++;
+      }
+      li++;
+    } else if (lv < rv) {
+      document.getElementById('mj-label').textContent = `L[${li}]=${lv} < R[${ri}]=${rv} — advance L pointer`;
+      lel.className = 'row-item row-sorted';
+      await sleep(350);
+      li++;
+    } else {
+      document.getElementById('mj-label').textContent = `R[${ri}]=${rv} < L[${li}]=${lv} — advance R pointer`;
+      rel.className = 'row-item row-sorted';
+      await sleep(350);
+      ri++;
+    }
+  }
+  document.getElementById('mj-label').textContent = `Done — ${matches} matches found. Each row read at most once.`;
+  mjRun = false;
+}
+
+/* ──────────────── HASH JOIN ──────────────── */
+let hjRun = false;
+const NUM_BUCKETS = 4;
+
+const HJ_BUILD = [
+  { id:1, name:'Alice' }, { id:2, name:'Bob' },
+  { id:3, name:'Carol' }, { id:4, name:'Dave' },
+];
+const HJ_PROBE = [
+  { oid:101, cid:2, item:'Book' }, { oid:102, cid:1, item:'Pen' },
+  { oid:103, cid:3, item:'Bag'  }, { oid:104, cid:2, item:'Lamp'},
+  { oid:105, cid:5, item:'Cup'  }, { oid:106, cid:1, item:'Mug' },
+];
+
+const hfn = k => ((k * 2654435761) >>> 0) % NUM_BUCKETS;
+
+function buildHJ() {
+  document.getElementById('hj-build').innerHTML = '';
+  document.getElementById('hj-probe').innerHTML = '';
+  document.getElementById('hj-out').innerHTML = '';
+  document.getElementById('hj-count').textContent = '0 rows';
+  document.getElementById('hj-lookups').textContent = '0';
+  document.getElementById('hj-built').textContent = '0';
+  document.getElementById('hj-label').textContent = 'Click Animate to start';
+
+  HJ_BUILD.forEach((r, i) => {
+    const d = rowHtml('row-idle', `<span class="row-key">id=${r.id}</span>${r.name}`);
+    d.id = 'hjb' + i; document.getElementById('hj-build').appendChild(d);
+  });
+  HJ_PROBE.forEach((r, i) => {
+    const d = rowHtml('row-idle', `<span class="row-key">cid=${r.cid}</span>Order #${r.oid}`);
+    d.id = 'hjp' + i; document.getElementById('hj-probe').appendChild(d);
+  });
+
+  // Build bucket display
+  const bg = document.getElementById('hj-buckets');
+  bg.innerHTML = '';
+  for (let b = 0; b < NUM_BUCKETS; b++) {
+    const bc = document.createElement('div');
+    bc.className = 'bucket'; bc.id = 'bucket' + b;
+    bc.innerHTML = `<div class="bucket-label">Bucket ${b} &nbsp;h(key)%${NUM_BUCKETS}=${b}</div>
+                    <div class="bucket-entries" id="bent${b}"></div>`;
+    bg.appendChild(bc);
+  }
+}
+
+function resetHJ() { hjRun = false; buildHJ(); }
+
+async function playHJ() {
+  if (hjRun) return;
+  hjRun = true;
+  buildHJ();
+
+  // ── BUILD PHASE ──
+  document.getElementById('hj-label').textContent = 'BUILD PHASE: hashing smaller table (Customers) into memory…';
+  const hashTable = {};
+
+  for (let i = 0; i < HJ_BUILD.length; i++) {
+    if (!hjRun) return;
+    const r = HJ_BUILD[i];
+    const bel = document.getElementById('hjb' + i);
+    bel.className = 'row-item row-hashed';
+    const b = hfn(r.id);
+    document.getElementById('bucket' + b).classList.add('active-bucket');
+    document.getElementById('hj-label').textContent = `Build: h(id=${r.id}) → Bucket ${b}`;
+
+    // add entry to bucket
+    const entry = document.createElement('div');
+    entry.className = 'bucket-entry be-filled';
+    entry.id = 'bentry-' + r.id;
+    entry.textContent = `id=${r.id} ${r.name}`;
+    document.getElementById('bent' + b).appendChild(entry);
+
+    if (!hashTable[r.id]) hashTable[r.id] = [];
+    hashTable[r.id].push(r);
+
+    document.getElementById('hj-built').textContent = i + 1;
+    await sleep(380);
+    document.getElementById('bucket' + b).classList.remove('active-bucket');
+  }
+
+  await sleep(500);
+
+  // ── PROBE PHASE ──
+  document.getElementById('hj-label').textContent = 'PROBE PHASE: streaming larger table (Orders), looking up each key…';
+  let matches = 0, lookups = 0;
+
+  for (let i = 0; i < HJ_PROBE.length; i++) {
+    if (!hjRun) return;
+    const r = HJ_PROBE[i];
+    const pel = document.getElementById('hjp' + i);
+    pel.className = 'row-item row-probe';
+    const b = hfn(r.cid);
+    document.getElementById('bucket' + b).classList.add('active-bucket');
+    document.getElementById('hj-label').textContent = `Probe: h(cid=${r.cid}) → Bucket ${b} — looking up…`;
+    await sleep(350);
+
+    lookups++;
+    document.getElementById('hj-lookups').textContent = lookups;
+
+    if (hashTable[r.cid]) {
+      const bentry = document.getElementById('bentry-' + r.cid);
+      if (bentry) { bentry.className = 'bucket-entry be-hit'; }
+
+      for (const cust of hashTable[r.cid]) {
+        matches++;
+        pel.className = 'row-item row-match';
+        document.getElementById('hj-count').textContent = matches + ' rows';
+        document.getElementById('hj-out').appendChild(
+          matchRow(`id=${cust.id} ${cust.name}`, `Order #${r.oid} · ${r.item}`)
+        );
+        document.getElementById('hj-label').textContent = `✓ Match! cid=${r.cid} found in Bucket ${b}`;
+        await sleep(250);
+      }
+    } else {
+      pel.className = 'row-item row-idle';
+      document.getElementById('hj-label').textContent = `✗ cid=${r.cid} — no entry in Bucket ${b}`;
+      await sleep(300);
+    }
+    document.getElementById('bucket' + b).classList.remove('active-bucket');
+  }
+
+  document.getElementById('hj-label').textContent = `Done — ${lookups} hash lookups, ${matches} matches found`;
+  hjRun = false;
+}
+
+/* ──────────────── COMPARISON CHART ──────────────── */
+function drawChart() {
+  const canvas = document.getElementById('cmp-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.parentElement.clientWidth;
+  const H = 180;
+  canvas.width = W; canvas.height = H;
+
+  const N = 10;
+  const pts = Array.from({length: N}, (_, i) => i + 1);
+  const nl  = pts.map(n => n * n);
+  const mj  = pts.map(n => n * Math.log2(n) + n);
+  const hj  = pts.map(n => n + n);
+  const maxV = Math.max(...nl);
+
+  const pad = { t: 10, r: 20, b: 30, l: 40 };
+  const cw = W - pad.l - pad.r;
+  const ch = H - pad.t - pad.b;
+
+  const sx = i => pad.l + (i / (N - 1)) * cw;
+  const sy = v => pad.t + (1 - v / maxV) * ch;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // grid
+  ctx.strokeStyle = '#1c2d44'; ctx.lineWidth = 1;
+  for (let g = 0; g <= 4; g++) {
+    const y = pad.t + (g / 4) * ch;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cw, y); ctx.stroke();
+  }
+
+  function line(data, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    data.forEach((v, i) => i === 0 ? ctx.moveTo(sx(i), sy(v)) : ctx.lineTo(sx(i), sy(v)));
+    ctx.stroke();
+  }
+
+  line(nl, '#f59e0b');
+  line(mj, '#38bdf8');
+  line(hj, '#fb7185');
+
+  // x-axis labels
+  ctx.fillStyle = '#4a6080'; ctx.font = '10px IBM Plex Mono'; ctx.textAlign = 'center';
+  pts.forEach((n, i) => ctx.fillText('N=' + n, sx(i), H - 8));
+
+  // y-axis label
+  ctx.save(); ctx.translate(12, H / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillText('comparisons', 0, 0); ctx.restore();
+}
+
+/* ──────────────── TABS ──────────────── */
+function show(id) {
+  document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('scene-' + id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'cmp') setTimeout(drawChart, 50);
+}
+
+/* ──────────────── INIT ──────────────── */
+buildNL(); buildMJ(); buildHJ();
+window.addEventListener('resize', () => {
+  if (document.getElementById('scene-cmp').classList.contains('active')) drawChart();
+});
+</script>
+</body>
+</html>

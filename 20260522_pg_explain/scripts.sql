@@ -32,4 +32,17 @@ WHERE t1.unique1 < 10 AND t1.unique2 = t2.unique2;
 
 
 
+EXPLAIN SELECT *
+FROM tenk1 t1, tenk2 t2
+WHERE t1.unique1 < 10 AND t2.unique2 < 10 AND t1.hundred < t2.hundred;
+
+EXPLAIN SELECT *
+FROM tenk1 t1, tenk2 t2
+WHERE t1.unique1 < 100 AND t1.unique2 = t2.unique2;
+
+
+EXPLAIN SELECT *
+FROM tenk1 t1, onek t2
+WHERE t1.unique1 < 100 AND t1.unique2 = t2.unique2;
+
 

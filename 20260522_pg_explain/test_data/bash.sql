@@ -16,6 +16,10 @@ CREATE INDEX tenk2_unique2 ON tenk2(unique2);
 CREATE INDEX tenk2_hundred ON tenk2(hundred);
 
 CREATE TABLE onek AS SELECT * FROM tenk1 LIMIT 0;
+CREATE INDEX onek_unique1 ON onek(unique1);
+CREATE INDEX onek_unique2 ON onek(unique2);
+CREATE INDEX onek_hundred ON onek(hundred);
+
 
 CREATE TABLE unit (un name, flt8 float8);
 

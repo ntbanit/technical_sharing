@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Database Scan Types — Visual Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #111827;
+    --border: #1f2d45;
+    --accent-seq: #f97316;
+    --accent-idx: #22d3ee;
+    --accent-bmp: #a78bfa;
+    --accent-heap: #34d399;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --highlight: #fbbf24;
+    --row-h: 28px;
+    --row-gap: 4px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 48px 24px;
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+  }
+  header h1 {
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, #e2e8f0, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding-bottom: 3px;
+  }
+
+  /* NAV TABS */
+  nav {
+    display: flex;
+    gap: 0;
+    padding: 0 48px;
+    background: #0d1424;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  nav button {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 14px 22px;
+    background: transparent;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .2s;
+    letter-spacing: 0.3px;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active {
+    color: var(--text);
+    border-bottom-color: var(--highlight);
+  }
+  nav button span {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 7px;
+    vertical-align: middle;
+  }
+
+  /* MAIN CONTENT */
+  main { padding: 36px 48px; max-width: 1200px; margin: 0 auto; }
+
+  .scene { display: none; animation: fadeIn .35s ease; }
+  .scene.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .scene-header { margin-bottom: 28px; }
+  .scene-header h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; }
+  .scene-header p  { color: #94a3b8; font-size: 0.9rem; max-width: 680px; line-height: 1.6; }
+
+  /* TWO-COLUMN LAYOUT */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+
+  /* LEGEND */
+  .legend {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-bottom: 22px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--muted); }
+  .legend-dot { width: 11px; height: 11px; border-radius: 2px; flex-shrink: 0; }
+
+  /* TABLE VISUALIZATION */
+  .viz-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px;
+    min-height: 260px;
+  }
+  .viz-box h3 {
+    font-size: 0.72rem;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .heap-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--row-gap);
+  }
+
+  .page-block {
+    border-radius: 5px;
+    padding: 6px 4px;
+    font-size: 0.68rem;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    transition: all .3s ease;
+    border: 1.5px solid transparent;
+    height: var(--row-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-block::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity .15s;
+    border-radius: inherit;
+  }
+  .page-block.flash::after { opacity: 0.12; }
+
+  .page-idle { background: #1e2d45; color: #475569; border-color: #253548; }
+  .page-read  { background: #1e3a1e; color: #86efac; border-color: #16a34a; }
+  .page-skip  { background: #1e2d45; color: #334155; border-color: #1e2d45; opacity: 0.4; }
+  .page-match { background: #2d1f4e; color: #c4b5fd; border-color: #7c3aed; }
+  .page-heap  { background: #14302b; color: #6ee7b7; border-color: #059669; }
+
+  /* INDEX TREE VISUALIZATION */
+  .index-tree {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.8;
+  }
+  .tree-node {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 0.7rem;
+    transition: all .25s;
+  }
+  .node-root   { background: #1e1b4b; border-color: #4338ca; color: #a5b4fc; }
+  .node-branch { background: #1a2e4a; border-color: #0ea5e9; color: #7dd3fc; }
+  .node-leaf   { background: #14302b; border-color: #059669; color: #6ee7b7; }
+  .node-active { box-shadow: 0 0 0 2px var(--highlight); }
+
+  .tree-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .tree-indent { color: #2d3748; }
+
+  /* BITMAP VISUALIZATION */
+  .bitmap-row {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+  .bitmap-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .bit {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all .3s;
+  }
+  .bit-0 { background: #1e2d45; color: #475569; }
+  .bit-1-a { background: #2d1f4e; color: #c4b5fd; }
+  .bit-1-b { background: #1e3a1e; color: #86efac; }
+  .bit-and { background: #2d2414; color: #fcd34d; }
+
+  /* POINTER STRIP */
+  .pointer-strip {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    margin-top: 4px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .ptr {
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ptr-on   { background: #2d1f4e; color: #c4b5fd; border: 1px solid #7c3aed; }
+  .ptr-off  { background: #1e2d45; color: #334155; border: 1px solid #253548; }
+  .ptr-heap { background: #14302b; color: #6ee7b7; border: 1px solid #059669; }
+
+  /* INFO CARD */
+  .info-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px;
+  }
+  .info-card h3 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat-item {
+    background: #0d1424;
+    border-radius: 6px;
+    padding: 12px;
+    border: 1px solid var(--border);
+  }
+  .stat-label { font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
+  .stat-value { font-size: 1.1rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pros, .cons {
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 0.78rem;
+    line-height: 1.7;
+  }
+  .pros { background: #0f2318; border: 1px solid #166534; color: #86efac; }
+  .cons { background: #2d1515; border: 1px solid #7f1d1d; color: #fca5a5; }
+  .pros strong, .cons strong {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pros li, .cons li { list-style: none; padding-left: 0; }
+  .pros li::before { content: '✓ '; opacity: 0.7; }
+  .cons li::before { content: '✗ '; opacity: 0.7; }
+
+  /* PLAYBACK CONTROLS */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all .15s;
+    background: var(--panel);
+    color: var(--text);
+  }
+  .btn:hover { background: #1f2d45; border-color: #334155; }
+  .btn-play {
+    background: #1e1b4b;
+    border-color: #4338ca;
+    color: #c7d2fe;
+  }
+  .btn-play:hover { background: #312e81; }
+
+  .step-label {
+    font-size: 0.78rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--highlight);
+    padding: 6px 12px;
+    background: #1f1a0a;
+    border-radius: 4px;
+    border: 1px solid #78350f;
+  }
+
+  /* COMPARISON TABLE */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .compare-table th, .compare-table td {
+    padding: 11px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-table th {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    background: #0d1424;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .compare-table tr:hover td { background: #111827; }
+  .compare-table td:first-child { font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .badge-good { background: #14302b; color: #6ee7b7; border: 1px solid #059669; }
+  .badge-bad  { background: #2d1515; color: #fca5a5; border: 1px solid #7f1d1d; }
+  .badge-mid  { background: #2d2414; color: #fcd34d; border: 1px solid #92400e; }
+
+  .full-width { grid-column: 1 / -1; }
+
+  /* ARROW */
+  .arrow-down {
+    text-align: center;
+    color: var(--muted);
+    font-size: 1.2rem;
+    margin: 8px 0;
+  }
+
+  /* PHASE STEP */
+  .phase {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: #0d1424;
+  }
+  .phase-num {
+    flex-shrink: 0;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  .phase p { font-size: 0.8rem; color: #94a3b8; line-height: 1.5; }
+  .phase strong { color: var(--text); font-size: 0.82rem; }
+
+  @media (max-width: 700px) {
+    main { padding: 24px 20px; }
+    header { padding: 20px 20px 16px; }
+    nav { padding: 0 20px; }
+    .cols { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: 1fr; }
+    .pros-cons { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Database Scan Types</h1>
+    <p>Visual explainer · Sequential · Index · Bitmap Index · Bitmap Heap</p>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showScene('seq')" id="tab-seq">
+    <span style="background:var(--accent-seq)"></span>Sequential Scan
+  </button>
+  <button onclick="showScene('idx')" id="tab-idx">
+    <span style="background:var(--accent-idx)"></span>Index Scan
+  </button>
+  <button onclick="showScene('bmp')" id="tab-bmp">
+    <span style="background:var(--accent-bmp)"></span>Bitmap Index Scan
+  </button>
+  <button onclick="showScene('heap')" id="tab-heap">
+    <span style="background:var(--accent-heap)"></span>Bitmap Heap Scan
+  </button>
+  <button onclick="showScene('cmp')" id="tab-cmp">
+    <span style="background:var(--muted)"></span>Comparison
+  </button>
+</nav>
+
+<main>
+
+<!-- ======================== SEQUENTIAL SCAN ======================== -->
+<div class="scene active" id="scene-seq">
+  <div class="scene-header">
+    <h2 style="color:var(--accent-seq)">Sequential Scan (Seq Scan)</h2>
+    <p>Reads <strong>every page</strong> of the table from disk, in physical order — no index involved. Every row is examined to check if it matches the filter condition.</p>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#2d4a22;border:1px solid #16a34a"></div>Page being read</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1e2d45;border:1px solid #334155"></div>Unread page</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2d1f4e;border:1px solid #7c3aed"></div>Row matches filter</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-play" onclick="playSeq()">▶ Animate</button>
+    <button class="btn" onclick="resetSeq()">↺ Reset</button>
+    <span class="step-label" id="seq-label">Click Animate to start</span>
+  </div>
+
+  <div class="cols">
+    <div class="viz-box">
+      <h3>HEAP TABLE — 20 Pages (each page = 1 row for clarity)</h3>
+      <div class="heap-grid" id="seq-grid"></div>
+    </div>
+
+    <div class="info-card">
+      <h3>Characteristics</h3>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="stat-label">I/O Pattern</div>
+          <div class="stat-value" style="color:var(--accent-seq);font-size:0.9rem">Sequential</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Pages Read</div>
+          <div class="stat-value" style="color:var(--accent-seq)" id="seq-pages-read">0 / 20</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Index Used</div>
+          <div class="stat-value" style="color:#ef4444;font-size:0.9rem">None</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Rows Matched</div>
+          <div class="stat-value" style="color:var(--accent-bmp)" id="seq-matched">0</div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros">
+          <strong>When Fast</strong>
+          <ul>
+            <li>Large % of rows match</li>
+            <li>No index overhead</li>
+            <li>OS read-ahead friendly</li>
+            <li>Small tables</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <strong>When Slow</strong>
+          <ul>
+            <li>Selective queries</li>
+            <li>Huge tables, few matches</li>
+            <li>Random access avoided</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== INDEX SCAN ======================== -->
+<div class="scene" id="scene-idx">
+  <div class="scene-header">
+    <h2 style="color:var(--accent-idx)">Index Scan</h2>
+    <p>Traverses a <strong>B-tree index</strong> to find exact row locations (TIDs), then fetches <em>each matching row individually</em> from the heap — one random I/O per match.</p>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1e1b4b;border:1px solid #4338ca"></div>Root node</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1a2e4a;border:1px solid #0ea5e9"></div>Branch node</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#14302b;border:1px solid #059669"></div>Leaf node</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--highlight);border:1px solid #d97706"></div>Active traversal</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#14302b;border:1px solid #059669"></div>Heap fetch</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-play" onclick="playIdx()">▶ Animate</button>
+    <button class="btn" onclick="resetIdx()">↺ Reset</button>
+    <span class="step-label" id="idx-label">Click Animate to start</span>
+  </div>
+
+  <div class="cols">
+    <div class="viz-box">
+      <h3>B-TREE INDEX TRAVERSAL</h3>
+      <div class="index-tree" id="idx-tree">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <div class="viz-box">
+      <h3>HEAP — RANDOM PAGE FETCHES</h3>
+      <div class="heap-grid" id="idx-grid"></div>
+      <div style="margin-top:12px;font-size:0.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">
+        ↑ Each matched leaf entry → random I/O jump to heap page
+      </div>
+    </div>
+
+    <div class="info-card full-width">
+      <h3>Characteristics</h3>
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat-item">
+          <div class="stat-label">I/O Pattern</div>
+          <div class="stat-value" style="color:#ef4444;font-size:0.85rem">Random</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Index Pages</div>
+          <div class="stat-value" style="color:var(--accent-idx)">3 (root→leaf)</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Heap Fetches</div>
+          <div class="stat-value" style="color:var(--accent-seq)" id="idx-fetches">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Best For</div>
+          <div class="stat-value" style="color:var(--accent-heap);font-size:0.8rem">Very selective</div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros">
+          <strong>When Fast</strong>
+          <ul>
+            <li>Few rows match (&lt;5–10%)</li>
+            <li>ORDER BY matches index</li>
+            <li>Index-only scan possible</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <strong>When Slow</strong>
+          <ul>
+            <li>Many matches → random I/O storm</li>
+            <li>Each hit = separate heap fetch</li>
+            <li>Table not in cache</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== BITMAP INDEX SCAN ======================== -->
+<div class="scene" id="scene-bmp">
+  <div class="scene-header">
+    <h2 style="color:var(--accent-bmp)">Bitmap Index Scan</h2>
+    <p>Scans one or more indexes and builds an <strong>in-memory bitmap</strong> — one bit per heap page — marking which pages <em>might</em> contain matching rows. Multiple bitmaps can be AND/OR-combined cheaply before touching the heap.</p>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-play" onclick="playBmp()">▶ Animate</button>
+    <button class="btn" onclick="resetBmp()">↺ Reset</button>
+    <span class="step-label" id="bmp-label">Click Animate to start</span>
+  </div>
+
+  <div class="cols">
+    <div class="viz-box">
+      <h3>INDEX A → BITMAP A &nbsp;(e.g. city = 'NYC')</h3>
+      <div class="bitmap-row">
+        <div class="bitmap-label">Page #:</div>
+        <div class="bit" style="background:#1e2d45;color:#475569">0</div>
+        <div class="bit" style="background:#1e2d45;color:#475569">1</div>
+        <div class="bit" style="background:#1e2d45;color:#475569">2</div>
+        <div class="bit" style="background:#1e2d45;color:#475569">3</div>
+        <div class="bit" style="background:#1e2d45;color:#475569">4</div>
+        <div class="bit" style="background:#1e2d45;color:#475569">5</div>
+        <div class="bit" style="background:#1e2d45;color:#475569">6</div>
+        <div class="bit" style="background:#1e2d45;color:#475569">7</div>
+      </div>
+      <div class="bitmap-row" id="bmp-a-row">
+        <div class="bitmap-label">Bitmap A:</div>
+        <div class="bit bit-0" id="ba0">0</div><div class="bit bit-0" id="ba1">0</div>
+        <div class="bit bit-0" id="ba2">0</div><div class="bit bit-0" id="ba3">0</div>
+        <div class="bit bit-0" id="ba4">0</div><div class="bit bit-0" id="ba5">0</div>
+        <div class="bit bit-0" id="ba6">0</div><div class="bit bit-0" id="ba7">0</div>
+      </div>
+
+      <div style="height:18px"></div>
+      <h3>INDEX B → BITMAP B &nbsp;(e.g. year > 2020)</h3>
+      <div class="bitmap-row" id="bmp-b-row">
+        <div class="bitmap-label">Bitmap B:</div>
+        <div class="bit bit-0" id="bb0">0</div><div class="bit bit-0" id="bb1">0</div>
+        <div class="bit bit-0" id="bb2">0</div><div class="bit bit-0" id="bb3">0</div>
+        <div class="bit bit-0" id="bb4">0</div><div class="bit bit-0" id="bb5">0</div>
+        <div class="bit bit-0" id="bb6">0</div><div class="bit bit-0" id="bb7">0</div>
+      </div>
+
+      <div style="margin:14px 0;font-size:0.9rem;text-align:center;color:#fbbf24;font-family:'JetBrains Mono',monospace" id="bmp-op-label">⊕</div>
+
+      <h3>BITWISE AND → FINAL BITMAP</h3>
+      <div class="bitmap-row" id="bmp-and-row">
+        <div class="bitmap-label">AND result:</div>
+        <div class="bit bit-0" id="bc0">?</div><div class="bit bit-0" id="bc1">?</div>
+        <div class="bit bit-0" id="bc2">?</div><div class="bit bit-0" id="bc3">?</div>
+        <div class="bit bit-0" id="bc4">?</div><div class="bit bit-0" id="bc5">?</div>
+        <div class="bit bit-0" id="bc6">?</div><div class="bit bit-0" id="bc7">?</div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>Key Insight</h3>
+
+      <div class="phase">
+        <div class="phase-num" style="background:#2d1f4e;color:#c4b5fd">1</div>
+        <div>
+          <strong>Build Bitmaps from Indexes</strong>
+          <p>Each index is scanned; a bit is set for every page that has at least one matching row. No heap access yet.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:#2d2414;color:#fcd34d">2</div>
+        <div>
+          <strong>Combine with AND / OR</strong>
+          <p>Multiple bitmaps are AND-ed (both conditions) or OR-ed (either condition) in memory — very cheap, no I/O.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:#14302b;color:#6ee7b7">3</div>
+        <div>
+          <strong>Hand off to Bitmap Heap Scan</strong>
+          <p>The resulting bitmap is used by the heap scan in the next step to read <em>only</em> the marked pages.</p>
+        </div>
+      </div>
+
+      <div class="pros-cons" style="margin-top:14px">
+        <div class="pros">
+          <strong>Advantages</strong>
+          <ul>
+            <li>Combine multiple indexes</li>
+            <li>Turns random I/O → sequential</li>
+            <li>No duplicate heap fetches</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <strong>Trade-offs</strong>
+          <ul>
+            <li>Memory for bitmap</li>
+            <li>Recheck needed (lossy)</li>
+            <li>Not for ORDER BY</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== BITMAP HEAP SCAN ======================== -->
+<div class="scene" id="scene-heap">
+  <div class="scene-header">
+    <h2 style="color:var(--accent-heap)">Bitmap Heap Scan</h2>
+    <p>Uses the bitmap produced by the Bitmap Index Scan to visit <strong>only the marked heap pages</strong>, in physical order — converting what would be random I/O into sequential I/O.</p>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-play" onclick="playHeap()">▶ Animate</button>
+    <button class="btn" onclick="resetHeap()">↺ Reset</button>
+    <span class="step-label" id="heap-label">Click Animate to start</span>
+  </div>
+
+  <div class="cols">
+    <div class="viz-box">
+      <h3>FINAL BITMAP (from Bitmap Index Scan)</h3>
+      <div class="pointer-strip" id="heap-bits"></div>
+      <div style="height:10px"></div>
+      <h3>HEAP — ONLY MARKED PAGES READ (in order)</h3>
+      <div class="heap-grid" id="heap-grid"></div>
+      <div style="margin-top:10px;font-size:0.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace">
+        ↑ Pages read sequentially, skipping unmarked pages
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>Why This Matters</h3>
+
+      <div class="phase">
+        <div class="phase-num" style="background:#2d1f4e;color:#c4b5fd">1</div>
+        <div>
+          <strong>Receive Bitmap</strong>
+          <p>The bitmap from the previous node tells exactly which heap pages may contain matches.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:#14302b;color:#6ee7b7">2</div>
+        <div>
+          <strong>Sequential Page Reads</strong>
+          <p>Pages are visited in physical order — the OS read-ahead cache works efficiently, unlike an Index Scan.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:#2d2414;color:#fcd34d">3</div>
+        <div>
+          <strong>Recheck Condition</strong>
+          <p>Each page may be "lossy" (bit covers a whole page). The planner rechecks the filter on each row in the page.</p>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="margin-top:14px">
+        <div class="stat-item">
+          <div class="stat-label">Pages Skipped</div>
+          <div class="stat-value" style="color:var(--accent-seq)" id="heap-skipped">—</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Pages Read</div>
+          <div class="stat-value" style="color:var(--accent-heap)" id="heap-read">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== COMPARISON ======================== -->
+<div class="scene" id="scene-cmp">
+  <div class="scene-header">
+    <h2 style="color:var(--text)">Scan Type Comparison</h2>
+    <p>How the planner picks between scan strategies based on selectivity, table size, and available indexes.</p>
+  </div>
+
+  <div class="viz-box" style="margin-bottom:24px">
+    <h3>DECISION MATRIX</h3>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Scan Type</th>
+          <th>I/O Pattern</th>
+          <th>Index Used</th>
+          <th>Multi-Index</th>
+          <th>Best Selectivity</th>
+          <th>ORDER BY</th>
+          <th>Cost (many matches)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:var(--accent-seq)">Sequential Scan</td>
+          <td><span class="badge badge-good">Sequential</span></td>
+          <td><span class="badge badge-bad">No</span></td>
+          <td><span class="badge badge-bad">No</span></td>
+          <td><span class="badge badge-good">&gt; 20–30%</span></td>
+          <td><span class="badge badge-bad">Needs sort</span></td>
+          <td><span class="badge badge-good">Stable O(N)</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--accent-idx)">Index Scan</td>
+          <td><span class="badge badge-bad">Random</span></td>
+          <td><span class="badge badge-good">Yes (B-tree)</span></td>
+          <td><span class="badge badge-bad">One only</span></td>
+          <td><span class="badge badge-good">&lt; 5–10%</span></td>
+          <td><span class="badge badge-good">Free if ordered</span></td>
+          <td><span class="badge badge-bad">Random I/O storm</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--accent-bmp)">Bitmap Index Scan</td>
+          <td><span class="badge badge-mid">In-memory</span></td>
+          <td><span class="badge badge-good">Yes</span></td>
+          <td><span class="badge badge-good">Yes (AND/OR)</span></td>
+          <td><span class="badge badge-mid">5–20%</span></td>
+          <td><span class="badge badge-bad">Not guaranteed</span></td>
+          <td><span class="badge badge-good">Avoids dups</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--accent-heap)">Bitmap Heap Scan</td>
+          <td><span class="badge badge-good">Sequential</span></td>
+          <td><span class="badge badge-mid">Via bitmap</span></td>
+          <td><span class="badge badge-good">Yes</span></td>
+          <td><span class="badge badge-mid">5–20%</span></td>
+          <td><span class="badge badge-bad">Needs sort</span></td>
+          <td><span class="badge badge-good">Skips pages</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="viz-box">
+    <h3>WHEN DOES THE PLANNER CHOOSE EACH?</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px">
+      <div class="phase">
+        <div class="phase-num" style="background:#2d1a0e;color:var(--accent-seq)">Seq</div>
+        <div>
+          <strong>Use Sequential Scan when…</strong>
+          <p>No usable index exists, table is small, or &gt;~25% of rows match — reading everything is cheaper than index overhead.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:#0f2535;color:var(--accent-idx)">Idx</div>
+        <div>
+          <strong>Use Index Scan when…</strong>
+          <p>Very few rows match (&lt;5%), table is large, and data is cached in memory (so random I/O is cheap).</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:#1e1240;color:var(--accent-bmp)">Bmp</div>
+        <div>
+          <strong>Use Bitmap Scan when…</strong>
+          <p>Moderate selectivity (5–20%), or query needs to combine two or more indexes with AND/OR conditions efficiently.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-num" style="background:#0f2820;color:var(--accent-heap)">Heap</div>
+        <div>
+          <strong>Bitmap Heap Scan always pairs with Bitmap Index Scan</strong>
+          <p>It is the second phase: it consumes the bitmap to do bulk sequential reads of only the relevant pages.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ===================== UTILITIES =====================
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function flash(el) {
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 200);
+}
+
+// ===================== SEQUENTIAL SCAN =====================
+const SEQ_TOTAL = 20;
+const SEQ_MATCH = [2, 5, 8, 12, 17]; // pages with matching rows
+let seqRunning = false;
+
+function buildSeqGrid() {
+  const g = document.getElementById('seq-grid');
+  g.innerHTML = '';
+  for (let i = 0; i < SEQ_TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'page-block page-idle';
+    d.id = 'sp' + i;
+    d.textContent = 'P' + i;
+    g.appendChild(d);
+  }
+  document.getElementById('seq-label').textContent = 'Click Animate to start';
+  document.getElementById('seq-pages-read').textContent = '0 / ' + SEQ_TOTAL;
+  document.getElementById('seq-matched').textContent = '0';
+}
+
+function resetSeq() { seqRunning = false; buildSeqGrid(); }
+
+async function playSeq() {
+  if (seqRunning) return;
+  seqRunning = true;
+  buildSeqGrid();
+  let matched = 0;
+  for (let i = 0; i < SEQ_TOTAL; i++) {
+    if (!seqRunning) return;
+    const el = document.getElementById('sp' + i);
+    el.className = 'page-block page-read';
+    flash(el);
+    document.getElementById('seq-pages-read').textContent = (i+1) + ' / ' + SEQ_TOTAL;
+    document.getElementById('seq-label').textContent = 'Reading page ' + i + '…';
+
+    await sleep(200);
+
+    if (SEQ_MATCH.includes(i)) {
+      el.className = 'page-block page-match';
+      el.textContent = '✓ P' + i;
+      matched++;
+      document.getElementById('seq-matched').textContent = matched;
+    }
+  }
+  document.getElementById('seq-label').textContent = 'Done — all ' + SEQ_TOTAL + ' pages scanned, ' + matched + ' rows matched';
+  seqRunning = false;
+}
+
+// ===================== INDEX SCAN =====================
+const IDX_HEAP_TOTAL = 20;
+const IDX_MATCHES = [3, 8, 14]; // heap pages that have matches
+let idxRunning = false;
+
+function buildIdxTree() {
+  document.getElementById('idx-tree').innerHTML = `
+    <div class="tree-row">
+      <div class="tree-node node-root" id="inode-root">Root [10 | 20]</div>
+    </div>
+    <div class="tree-row" style="margin-left:20px">
+      <span class="tree-indent">├─</span>
+      <div class="tree-node node-branch" id="inode-b1">&lt;10: [3|6|8]</div>
+    </div>
+    <div class="tree-row" style="margin-left:20px">
+      <span class="tree-indent">└─</span>
+      <div class="tree-node node-branch" id="inode-b2">10–20: [12|14|17]</div>
+    </div>
+    <div style="height:10px"></div>
+    <div class="tree-row" style="margin-left:40px">
+      <span class="tree-indent">├─</span>
+      <div class="tree-node node-leaf" id="inode-l1">Leaf: key=8 → page 8, row 2</div>
+    </div>
+    <div class="tree-row" style="margin-left:40px">
+      <span class="tree-indent">├─</span>
+      <div class="tree-node node-leaf" id="inode-l2">Leaf: key=3 → page 3, row 5</div>
+    </div>
+    <div class="tree-row" style="margin-left:40px">
+      <span class="tree-indent">└─</span>
+      <div class="tree-node node-leaf" id="inode-l3">Leaf: key=14 → page 14, row 1</div>
+    </div>
+  `;
+}
+
+function buildIdxGrid() {
+  const g = document.getElementById('idx-grid');
+  g.innerHTML = '';
+  for (let i = 0; i < IDX_HEAP_TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'page-block page-idle';
+    d.id = 'ip' + i;
+    d.textContent = 'P' + i;
+    g.appendChild(d);
+  }
+}
+
+function resetIdx() {
+  idxRunning = false;
+  buildIdxTree();
+  buildIdxGrid();
+  document.getElementById('idx-label').textContent = 'Click Animate to start';
+  document.getElementById('idx-fetches').textContent = '0';
+}
+
+async function highlightNode(id, on) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (on) el.classList.add('node-active');
+  else el.classList.remove('node-active');
+}
+
+async function playIdx() {
+  if (idxRunning) return;
+  idxRunning = true;
+  buildIdxTree();
+  buildIdxGrid();
+
+  const steps = [
+    { node: 'inode-root', label: '1. Start at Root node', fetch: null },
+    { node: 'inode-b1', label: '2. Follow left branch (&lt;10)', fetch: null },
+    { node: 'inode-l1', label: '3. Leaf: key=8 → TID (page 8, row 2)', fetch: 8 },
+    { node: 'inode-l2', label: '4. Leaf: key=3 → TID (page 3, row 5)', fetch: 3 },
+    { node: 'inode-b2', label: '5. Back to root → right branch', fetch: null },
+    { node: 'inode-l3', label: '6. Leaf: key=14 → TID (page 14, row 1)', fetch: 14 },
+  ];
+
+  let fetches = 0;
+  for (const step of steps) {
+    if (!idxRunning) return;
+    await highlightNode(step.node, true);
+    document.getElementById('idx-label').textContent = step.label;
+    await sleep(700);
+    await highlightNode(step.node, false);
+    if (step.fetch !== null) {
+      const hp = document.getElementById('ip' + step.fetch);
+      if (hp) {
+        hp.className = 'page-block page-heap';
+        hp.textContent = '✓P' + step.fetch;
+        flash(hp);
+      }
+      fetches++;
+      document.getElementById('idx-fetches').textContent = fetches;
+      await sleep(300);
+    }
+  }
+  document.getElementById('idx-label').textContent = 'Done — 3 leaf lookups, 3 random heap fetches';
+  idxRunning = false;
+}
+
+// ===================== BITMAP INDEX SCAN =====================
+const BMP_A = [0,0,1,0,0,1,0,0]; // city='NYC' matches pages 2,5
+const BMP_B = [0,0,1,0,1,1,0,0]; // year>2020 matches pages 2,4,5
+const BMP_C = BMP_A.map((v,i) => v & BMP_B[i]);
+let bmpRunning = false;
+
+function resetBmpBits() {
+  for (let i = 0; i < 8; i++) {
+    ['a','b','c'].forEach(x => {
+      const el = document.getElementById('b'+x+i);
+      if (!el) return;
+      el.className = 'bit bit-0';
+      el.textContent = x === 'c' ? '?' : '0';
+    });
+  }
+  document.getElementById('bmp-op-label').textContent = '⊕';
+  document.getElementById('bmp-label').textContent = 'Click Animate to start';
+}
+
+function resetBmp() { bmpRunning = false; resetBmpBits(); }
+
+async function playBmp() {
+  if (bmpRunning) return;
+  bmpRunning = true;
+  resetBmpBits();
+
+  document.getElementById('bmp-label').textContent = 'Phase 1: Scanning Index A (city = "NYC")…';
+  for (let i = 0; i < 8; i++) {
+    if (!bmpRunning) return;
+    const el = document.getElementById('ba'+i);
+    if (BMP_A[i]) {
+      el.className = 'bit bit-1-a';
+      el.textContent = '1';
+    } else {
+      el.textContent = '0';
+    }
+    await sleep(180);
+  }
+
+  await sleep(400);
+  document.getElementById('bmp-label').textContent = 'Phase 2: Scanning Index B (year > 2020)…';
+  for (let i = 0; i < 8; i++) {
+    if (!bmpRunning) return;
+    const el = document.getElementById('bb'+i);
+    if (BMP_B[i]) {
+      el.className = 'bit bit-1-b';
+      el.textContent = '1';
+    } else {
+      el.textContent = '0';
+    }
+    await sleep(180);
+  }
+
+  await sleep(400);
+  document.getElementById('bmp-op-label').textContent = '⊕  AND  ⊕';
+  document.getElementById('bmp-label').textContent = 'Phase 3: Bitwise AND to find pages matching BOTH conditions…';
+  for (let i = 0; i < 8; i++) {
+    if (!bmpRunning) return;
+    const el = document.getElementById('bc'+i);
+    if (BMP_C[i]) {
+      el.className = 'bit bit-and';
+      el.textContent = '1';
+    } else {
+      el.className = 'bit bit-0';
+      el.textContent = '0';
+    }
+    await sleep(180);
+  }
+
+  const marked = BMP_C.reduce((a,v)=>a+v,0);
+  document.getElementById('bmp-label').textContent = `Done — ${marked} page(s) marked (pages 2, 5). Bitmap ready for Heap Scan.`;
+  bmpRunning = false;
+}
+
+// ===================== BITMAP HEAP SCAN =====================
+const HEAP_BITMAP = [0,0,1,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1];
+const HEAP_TOTAL = 20;
+let heapRunning = false;
+
+function buildHeapScene() {
+  // bits strip
+  const strip = document.getElementById('heap-bits');
+  strip.innerHTML = '';
+  for (let i = 0; i < HEAP_TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'ptr ' + (HEAP_BITMAP[i] ? 'ptr-on' : 'ptr-off');
+    d.id = 'hbit' + i;
+    d.textContent = 'P' + i + ':' + HEAP_BITMAP[i];
+    strip.appendChild(d);
+  }
+
+  // heap grid
+  const g = document.getElementById('heap-grid');
+  g.innerHTML = '';
+  for (let i = 0; i < HEAP_TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'page-block ' + (HEAP_BITMAP[i] ? 'page-idle' : 'page-skip');
+    d.id = 'hp' + i;
+    d.textContent = 'P' + i;
+    g.appendChild(d);
+  }
+
+  document.getElementById('heap-label').textContent = 'Click Animate to start';
+  document.getElementById('heap-skipped').textContent = '—';
+  document.getElementById('heap-read').textContent = '—';
+}
+
+function resetHeap() { heapRunning = false; buildHeapScene(); }
+
+async function playHeap() {
+  if (heapRunning) return;
+  heapRunning = true;
+  buildHeapScene();
+
+  let read = 0, skipped = 0;
+  for (let i = 0; i < HEAP_TOTAL; i++) {
+    if (!heapRunning) return;
+    if (HEAP_BITMAP[i]) {
+      const bit = document.getElementById('hbit' + i);
+      bit.style.background = '#fbbf24';
+      bit.style.color = '#000';
+      const hp = document.getElementById('hp' + i);
+      hp.className = 'page-block page-heap';
+      hp.textContent = '✓P' + i;
+      flash(hp);
+      read++;
+      document.getElementById('heap-read').textContent = read;
+      document.getElementById('heap-label').textContent = `Reading page ${i} (marked in bitmap)…`;
+      await sleep(300);
+    } else {
+      skipped++;
+      document.getElementById('heap-skipped').textContent = skipped;
+      await sleep(60);
+    }
+  }
+
+  const pct = Math.round((HEAP_TOTAL - read) / HEAP_TOTAL * 100);
+  document.getElementById('heap-label').textContent = `Done — read ${read} pages, skipped ${skipped} pages (${pct}% I/O saved)`;
+  heapRunning = false;
+}
+
+// ===================== TABS =====================
+function showScene(id) {
+  document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('scene-' + id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ===================== INIT =====================
+buildSeqGrid();
+buildIdxTree();
+buildIdxGrid();
+buildHeapScene();
+</script>
+</body>
+</html>
