@@ -45,4 +45,15 @@ EXPLAIN SELECT *
 FROM tenk1 t1, onek t2
 WHERE t1.unique1 < 100 AND t1.unique2 = t2.unique2;
 
+SET enable_mergejoin = off;
 
+EXPLAIN SELECT *
+FROM tenk1 t1, onek t2
+WHERE t1.unique1 < 100 AND t1.unique2 = t2.unique2;
+
+-- 10000
+select count(1) from tenk1;
+-- 10000
+select count(1) from tenk2;
+-- 1000
+select count(1) from onek;

@@ -26,9 +26,9 @@ CREATE TABLE unit (un name, flt8 float8);
 CREATE TABLE polygon_tbl (f1 polygon);
 
 
-COPY tenk1 FROM 'D:/an.ntb/workspace/technical_sharings/test_data/tenk.data';
-COPY tenk2 FROM 'D:/an.ntb/workspace/technical_sharings/test_data/tenk.data';
-COPY onek  FROM 'D:/an.ntb/workspace/technical_sharings/test_data/onek.data';
+COPY tenk1 FROM 'C:/workspace/tenk.data';
+COPY tenk2 FROM 'C:/workspace/tenk.data';
+COPY onek  FROM 'C:/workspace/onek.data';
 
 
 

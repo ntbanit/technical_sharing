@@ -8,7 +8,10 @@ def gen_bin(index):
     
     for value in range(2):
         result[index] = value
+
         gen_bin(index + 1)
+
         result[index] = -1
 
 gen_bin(0)
+

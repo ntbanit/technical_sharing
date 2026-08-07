@@ -22,13 +22,28 @@ k luôn là một giá trị có thể tạo thành một dãy con của dãy.
 
 Ví dụ về Nhập/Xuất
 
-Kết quả dãy k
+| sequence | k | result |
+|------|---------|---------|
+|[1, 2, 3, 4, 5]|7|[2, 3]|
+|[1, 1, 1, 2, 3, 4, 5]|5|[6, 6]|
+|[2, 2, 2, 2, 2]|6|[0,2]|
 
-[1, 2, 3, 4, 5] 7 [2, 3]
+ l      r
 
-[1, 1, 1, 2, 3, 4, 5] 5 [6, 6]
+K = 7
+l, r = 5,5
 
-[2, 2, 2, 2, 2] 6 [0, 2]
+          l
+          r
+0 1 2 3 4 5
+1 2 3 4 5 7
+
+cur = 7
+
+
+
+
+
 
 Giải thích ví dụ về Nhập/Xuất
 
@@ -43,3 +58,4 @@ Trong [1, 1, 1, 2, 3, 4, 5], các dãy con liên tiếp có tổng bằng 5 là 
 Ví dụ Nhập/Xuất #3
 
 Trong [2, 2, 2, 2, 2], các dãy con liên tiếp có tổng bằng 6 là [2, 2, 2], đây là một trong ba trường hợp. Khi có nhiều dãy có độ dài ngắn, dãy xuất hiện đầu tiên sẽ được tìm kiếm, vì vậy [0, 2] được trả về.
+

@@ -8,13 +8,15 @@ def gen_comb(index):
         print(result)
         return
     
-    for value in range(1, N + 1):
+    for value in range(index + 1, N + 1):
         if visited[value]:
             continue
 
         visited[value] = True
         result[index] = value
+
         gen_comb(index + 1)
+
         visited[value] = False
 
 gen_comb(0)
