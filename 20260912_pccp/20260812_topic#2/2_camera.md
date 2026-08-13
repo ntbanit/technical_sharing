@@ -7,11 +7,22 @@ routes[i][1] : điểm mà phương tiện thứ i đi ra khỏi đường cao t
 
 Một phương tiện được coi là đã gặp camera ngay cả khi có camera được lắp đặt tại điểm vào hoặc điểm ra của nó.
 
-Điểm vào và điểm ra của phương tiện nằm trong khoảng từ -30.000 đến 30.000. 
+Điểm vào và điểm ra của phương tiện nằm trong khoảng từ -30.000 đến 30.000.
 
-Ví dụ 
+Ví dụ
 Input:
-[[-20,-15], [-14,-5], [-18,-13], [-5,-3]] 
+[[-20,-15], [-14,-5], [-18,-13], [-5,-3]]
+
+-20     -15
+            -14        -5
+    -18         -13
+                       -5   -3
+       -16         -7
+-20  -19
+-20                               1
+
+
+
 Ouput:
 2
 
