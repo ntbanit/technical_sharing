@@ -16,6 +16,11 @@ Số trích dẫn trả về
 
 [3, 0, 6, 1, 5] 3
 
+0 1 2 3 4
+0 1 3 5 6
+    
+
+
 Giải thích ví dụ về đầu vào/đầu ra
 
 Nhà khoa học này đã công bố 5 bài báo, và 3 trong số đó đã được trích dẫn từ 3 lần trở lên. Và vì hai bài báo còn lại được trích dẫn ba lần hoặc ít hơn, nên chỉ số H của nhà khoa học này là 3.

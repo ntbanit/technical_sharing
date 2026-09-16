@@ -2,8 +2,8 @@
 Next schedules:
 - Wed 20260805 AX Team PCCP Topic#1
 - Wed 20260812 AX Team PCCP Topic#2
-- Wed 20260826 AX Team PCCP Topic#3
-- Mon 20260907 AX Team PCCP Topic#4
+- Wed 20260829 AX Team PCCP Topic#3
+- Mon 20260903 AX Team PCCP Topic#4
 - Fri 20260911 SD Part Sharing #1
 
 Choosing a topic from these things (my next target ??)

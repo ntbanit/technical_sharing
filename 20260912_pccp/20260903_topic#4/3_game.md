@@ -24,10 +24,8 @@ diffs[i] biểu thị độ khó của câu đố thứ i, và times[i] biểu t
 diffs[0] = 1
 
 1 ≤ diffs[i] ≤ 100.000
-
 1 ≤ times[i] ≤ 10.000
-
-1 ≤ limit ≤ 1015
+1 ≤ limit ≤ 10^15
 
 Chỉ cung cấp dữ liệu đầu vào trong trường hợp tất cả các câu đố có thể được giải trong thời gian giới hạn. Ví dụ về đầu vào/đầu ra
 

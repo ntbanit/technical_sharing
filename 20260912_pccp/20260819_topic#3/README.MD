@@ -1,3 +1,5 @@
+
+
 17-07-2026	올바른 괄호	Level 2	Ngoặc	Stack	2
 https://school.programmers.co.kr/learn/courses/30/lessons/12909
 
@@ -10,10 +12,13 @@ https://school.programmers.co.kr/learn/courses/30/lessons/176962
 28-07-2026	전력망을 둘로 나누기	Level 2	Cắt cây	DFS/BFS	2
 https://school.programmers.co.kr/learn/courses/30/lessons/86971
 
+14-07-2026	리코쳇 로봇	Level 2	Đường đi rô bốt	BFS	2
+https://school.programmers.co.kr/learn/courses/30/lessons/169199
+
 05-08-2026	여행경로	Level 3	Lộ trình di chuyển	DFS/BFS	2
 https://school.programmers.co.kr/learn/courses/30/lessons/43164
 
-31-07-2026	디펜스 게임	Level 2	bày binh bố trận 	heap / binary search 
+31-07-2026	디펜스 게임	Level 2	bày binh bố trận 	heap / binary search
 https://school.programmers.co.kr/learn/courses/30/lessons/142085
 
 03-08-2026	이중우선순위큐	Level 3	Hàng đợi ưu tiên kép	heap	2
@@ -21,5 +26,4 @@ https://school.programmers.co.kr/learn/courses/30/lessons/42628
 
 04-08-2026	야근 지수	Level 3	OT	heap / binary search 	2
 https://school.programmers.co.kr/learn/courses/30/lessons/12927
-
 
