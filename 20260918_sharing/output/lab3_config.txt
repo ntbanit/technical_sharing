@@ -1,0 +1,52 @@
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$ APP_ENV=dev python3 src/lab3/l01_config.py
+[env=dev] model=claude-haiku-4-5-20251001
+# Active Configuration
+
+**Environment: `dev`** is active.
+
+## Why This Makes Sense
+
+1. **Model Choice (`claude-haiku-4-5-20251001`)**: Haiku is Claude's fastest and most cost-effective model, ideal for development where you're iterating quickly and don't need maximum reasoning power.
+
+2. **Token Limit (`200`)**: This is a conservative limit appropriate for:
+   - Testing and debugging workflows
+   - Keeping response sizes manageable during development
+   - Minimizing costs during experimentation
+   - Quick feedback loops without waiting for lengthy generations
+
+3. **Dev Environment Overall**: A development configuration typically prioritizes:
+   - Speed and iteration velocity
+   - Lower costs during testing
+   - Sufficient capability to validate logic without overkill
+   - Easy debugging with concise outputs
+
+This setup is a reasonable balance between capability and efficiency for a development workflow. You'd
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$
+
+
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$ APP_ENV=prod python3 src/lab3/l01_config.py
+[env=prod] model=claude-haiku-4-5-20251001
+# Active Environment Configuration
+
+**Environment: `prod`** ✓
+
+**Model: `claude-haiku-4-5-20251001`**
+
+**Max Tokens: `500`**
+
+## Why This Makes Sense
+
+1. **Production Environment** - The `prod` designation indicates this is a live, customer-facing system rather than a development or testing environment.
+
+2. **Haiku Model Choice** - Using Claude Haiku is appropriate for production because:
+   - **Cost-efficient**: Haiku is the most affordable Claude model, keeping operational expenses low
+   - **Fast inference**: Lower latency responses for better user experience
+   - **Sufficient capability**: For most standard tasks, Haiku provides adequate intelligence
+
+3. **Token Limit (500)** - This constraint makes sense for production by:
+   - **Controlling costs**: Limiting tokens per request prevents unexpectedly expensive API bills
+   - **Managing latency**: Shorter outputs generally complete faster
+   - **Preventing abuse**: Caps prevent misuse or runaway requests
+   - **Setting user expectations**: Helps manage what users can request
+
+**Summary**: This is a well-balanced production configuration optimized for **cost-efficiency** and **reliability** while maintaining adequate performance for typical use cases.

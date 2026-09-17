@@ -1,0 +1,21 @@
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$ python3 src/lab4/l02_add_tools.py
+The order Z999 was not found in the system. Could you please double-check the order ID? Make sure you have the correct order number, and feel free to provide it again if needed.
+
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$ python3 src/lab4/l02_add_tools.py
+stop_reason=tool_use
+Great! Order A101 has been **Delivered**. The order is for **Glasses** placed on 2026-09-16 for $89.90, being shipped to Metropolis.
+
+Now let me get the return policy for Glasses:
+stop_reason=end_turn
+Perfect! Here's the information you requested:
+
+**Order A101 Status:**
+- Status: Delivered
+- Product: Glasses
+- Amount: $89.90
+- Delivery Address: Metropolis
+- Order Date: 2026-09-16
+
+**Return Policy for Glasses:**
+- Returns accepted within 14 days.
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$

@@ -1,0 +1,22 @@
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$ python3 src/lab5/lab5a_manual_agent.py
+Here's the information for order A104:
+
+**Order Status:**
+- Customer: Arthur Curry
+- Order Date: September 13, 2026
+- Product: Trident
+- Amount: $499.90
+- Status: **Pending**
+- Delivery Address: Atlantis
+
+**Return Policy for Trident:**
+- **Returns not accepted** - This product cannot be returned.
+**Return Policy for Glasses**: Returns are accepted within 14 days.
+
+So to summarize: Your order A101 for Glasses has been delivered, and if you need to return them, you have 14 days from the delivery date to do so.
+Yes, you can return the product in order A100!
+
+Your order contains a **Mask** (ordered on 2026-09-17 for $123.4, currently shipped). According to the return policy, **returns are accepted within 30 days** of purchase.
+
+As long as you're within the 30-day return window from September 17, 2026, you should be able to return it. Make sure to follow any specific return instructions provided with your order or on the company's return page.
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$

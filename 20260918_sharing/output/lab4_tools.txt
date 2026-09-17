@@ -1,0 +1,18 @@
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$ python3 src/lab4/l01_tools.py
+The status of order A101 is **Delivered**.
+
+Here are the details:
+- **Customer:** Clark Kent
+- **Order Date:** September 16, 2026
+- **Shipping Address:** Metropolis
+- **Product:** Glasses
+- **Amount:** $89.90
+- **Status:** Delivered
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$ python3 src/lab4/l01_tools.py
+The order Z999 was not found in the system. This could mean:
+- The order ID may be incorrect or mistyped
+- The order doesn't exist in the database
+- The order may have been cancelled or removed
+
+Could you double-check the order ID and try again? If you believe the order ID is correct, you may need to contact customer support for further assistance.
+(.venv) an_ntb@LCSKVM11344:~/workspace/ccdv-f-labs$
